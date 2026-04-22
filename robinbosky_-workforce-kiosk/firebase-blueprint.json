@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents an employee, manager, or admin in the system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "MANAGER", "EMPLOYEE"] },
+        "position": { "type": "string" },
+        "department": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "shiftType": { "type": "string", "enum": ["DAY", "SHIFT", "NIGHT"] },
+        "shiftTiming": { "type": "string" },
+        "lunchTime": { "type": "string" },
+        "shortBreak": { "type": "string" },
+        "faceEnrolled": { "type": "boolean" },
+        "faceData": { "type": "string" },
+        "advanceAmount": { "type": "number" },
+        "avatar": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "position"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "A record of an employee's clock-in and clock-out event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "clockIn": { "type": "string", "format": "date-time" },
+        "clockOut": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["PRESENT", "LATE", "ABSENT"] },
+        "penalty": { "type": "number" },
+        "shift": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "clockIn", "location", "status"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "System notifications for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["ALERT", "APPROVAL", "UPDATE"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "time": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+        "targetRole": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and configuration."
+    },
+    "/attendance/{recordId}": {
+      "schema": "AttendanceRecord",
+      "description": "Employee attendance logs."
+    },
+    "/notifications/{notifId}": {
+      "schema": "AppNotification",
+      "description": "Global system notifications."
+    }
+  }
+}

@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Primitive Definition
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && 
+             (request.auth.token.email == 'admin@gmail.com' || 
+              request.auth.token.email == 'knitsasm@gmail.com' || 
+              request.auth.token.email == 'robinbosky.ops@gmail.com');
+    }
+
+    function isAdmin() { 
+      return isSuperAdmin() || (
+        isVerified() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        getUserRole() == 'ADMIN'
+      ); 
+    }
+    
+    function isManager() { 
+      return isVerified() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserRole() == 'MANAGER'; 
+    }
+    
+    function isStaff() { 
+      return isVerified() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserRole() == 'EMPLOYEE'; 
+    }
+
+    function isKiosk() { 
+      return isSignedIn() && 
+             (request.auth.token.email == 'staff@gmail.com' || 
+              request.auth.token.email == 'kiosk@gmail.com'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Connection Test Path (Instruction mandated) ---
+    match /test/connection {
+      allow read: if isSignedIn();
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['id', 'name', 'role', 'position']) &&
+               data.id is string && data.name is string && data.name.size() <= 100 &&
+               data.role in ['ADMIN', 'MANAGER', 'EMPLOYEE'] &&
+               data.position is string && data.position.size() <= 100;
+      }
+
+      // Allow admins to manage all users. Allow users to read their own profiles.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isManager() || isKiosk());
+      allow create: if isSignedIn() && (isAdmin() || request.auth.uid == userId) && isValidUser(incoming());
+      allow update: if isSignedIn() && (
+        (isAdmin() || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'id']))) 
+      ) && isValidUser(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // --- Attendance Collection ---
+    match /attendance/{recordId} {
+      function isValidRecord(data) {
+        return data.keys().hasAll(['userId', 'userName', 'status']) &&
+               data.userId is string && data.userName is string &&
+               data.status in ['PRESENT', 'LATE', 'ABSENT'];
+      }
+
+      // Users can see their own records. Admins/Managers can see all.
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isManager() || isKiosk());
+      allow create: if isSignedIn() && (isKiosk() || isAdmin() || isManager() || (isValidRecord(incoming()) && incoming().userId == request.auth.uid));
+      allow update: if isSignedIn() && (
+        isAdmin() || isManager() || isKiosk() || (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['clockOut', 'penalty', 'synced', 'status']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- Notifications Collection ---
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isManager();
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ROBINBOSKY: Workforce Kiosk",
+  "description": "Enterprise-grade biometric workforce hub featuring Firebase cloud persistence, AI-powered identity verification, advanced pro-rata payroll, and multi-role attendance management.",
+  "requestFramePermissions": ["geolocation", "camera"],
+  "majorCapabilities": ["Biometric Kiosk Sync", "Pro-Rata Payroll Engine", "Employee Lifecycle Management", "Role-Based Privacy"]
+}
